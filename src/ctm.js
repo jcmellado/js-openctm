@@ -529,9 +529,19 @@ CTM.makeNormalCoordSys = function(normals, index, basis){
   basis[5] = basis[6] * basis[1] - basis[7] * basis[0];
 };
 
+CTM.isLittleEndian = (function(){
+  var buffer = new ArrayBuffer(2),
+      bytes = new Uint8Array(buffer),
+      ints = new Uint16Array(buffer);
+
+  bytes[0] = 1;
+
+  return ints[0] === 1;
+})();
+
 CTM.InterleavedStream = function(data, count){
   this.data = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
-  this.offset = 3;
+  this.offset = CTM.isLittleEndian? 3: 0;
   this.count = count * 4;
 };
 
@@ -542,9 +552,9 @@ CTM.InterleavedStream.prototype.writeByte = function(value){
   if (this.offset >= this.data.length){
   
     this.offset -= this.data.length - 4;
-    if (this.offset > this.count){
+    if (this.offset >= this.count){
     
-      this.offset -= this.count + 1;
+      this.offset -= this.count + (CTM.isLittleEndian? 1: -1);
     }
   }
 };
@@ -585,7 +595,7 @@ CTM.Stream.prototype.readFloat32 = function(){
   var s = b2 & 0x80? -1: 1;
 
   if (e === 255){
-    return m !== 0? NaN : s * Infinity;
+    return m !== 0? NaN: s * Infinity;
   }
   if (e > 0){
     return s * (1 + (m * this.TWO_POW_MINUS23) ) * Math.pow(2, e - 127);
