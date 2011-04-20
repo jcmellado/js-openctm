@@ -428,7 +428,7 @@ CTM.restoreMap = function(map, count, precision){
     delta = 0;
 
     for (var j = i; j < map.length; j += count){
-      var value = mapIndices[j];
+      value = mapIndices[j];
       
       delta += value & 1? -( (value + 1) >> 1): value >> 1;
       
@@ -537,7 +537,7 @@ CTM.isLittleEndian = (function(){
   bytes[0] = 1;
 
   return ints[0] === 1;
-})();
+}());
 
 CTM.InterleavedStream = function(data, count){
   this.data = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
@@ -566,11 +566,11 @@ CTM.Stream = function(data){
 
 CTM.Stream.prototype.TWO_POW_MINUS23 = (function(){
   return Math.pow(2, -23);
-})();
+}());
 
 CTM.Stream.prototype.TWO_POW_MINUS126 = (function(){
   return Math.pow(2, -126);
-})();
+}());
 
 CTM.Stream.prototype.readByte = function(){
   return this.data.charCodeAt(this.offset ++) & 0xff;
