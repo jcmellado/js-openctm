@@ -371,7 +371,7 @@ CTM.restoreGridIndices = function(gridIndices, len){
 
 CTM.restoreVertices = function(vertices, grid, gridIndices, precision){
   var gridIdx, delta, x, y, z,
-      intVertices = new Uint32Array(vertices.buffer, vertices.byteOffset),
+      intVertices = new Uint32Array(vertices.buffer, vertices.byteOffset, vertices.length),
       ydiv = grid.divx, zdiv = ydiv * grid.divy,
       prevGridIdx = 0x7fffffff, prevDelta = 0,
       i = 0, j = 0, len = gridIndices.length;
@@ -404,7 +404,7 @@ CTM.restoreVertices = function(vertices, grid, gridIndices, precision){
 CTM.restoreNormals = function(normals, smooth, precision){
   var ro, phi, theta, sinPhi,
       nx, ny, nz, by, bz, len,
-      intNormals = new Uint32Array(normals.buffer, normals.byteOffset),
+      intNormals = new Uint32Array(normals.buffer, normals.byteOffset, normals.length),
       i = 0, k = normals.length,
       PI_DIV_2 = 3.141592653589793238462643 * 0.5;
 
@@ -452,7 +452,7 @@ CTM.restoreNormals = function(normals, smooth, precision){
 
 CTM.restoreMap = function(map, count, precision){
   var delta, value,
-      intMap = new Uint32Array(map.buffer, map.byteOffset),
+      intMap = new Uint32Array(map.buffer, map.byteOffset, map.length),
       i = 0, j, len = map.length;
 
   for (; i < count; ++ i){
