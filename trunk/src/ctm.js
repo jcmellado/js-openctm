@@ -146,7 +146,8 @@ CTM.ReaderRAW.prototype.readNormals = function(stream, normals){
 };
 
 CTM.ReaderRAW.prototype.readUVMaps = function(stream, uvMaps){
-  for (var i = 0; i < uvMaps.length; ++ i){
+  var i = 0;
+  for (; i < uvMaps.length; ++ i){
     stream.readInt32(); //magic "TEXC"
 
     uvMaps[i].name = stream.readString();
@@ -156,7 +157,8 @@ CTM.ReaderRAW.prototype.readUVMaps = function(stream, uvMaps){
 };
 
 CTM.ReaderRAW.prototype.readAttrMaps = function(stream, attrMaps){
-  for (var i = 0; i < attrMaps.length; ++ i){
+  var i = 0;
+  for (; i < attrMaps.length; ++ i){
     stream.readInt32(); //magic "ATTR"
 
     attrMaps[i].name = stream.readString();
@@ -209,7 +211,8 @@ CTM.ReaderMG1.prototype.readNormals = function(stream, normals){
 };
 
 CTM.ReaderMG1.prototype.readUVMaps = function(stream, uvMaps){
-  for (var i = 0; i < uvMaps.length; ++ i){
+  var i = 0;
+  for (; i < uvMaps.length; ++ i){
     stream.readInt32(); //magic "TEXC"
 
     uvMaps[i].name = stream.readString();
@@ -223,7 +226,8 @@ CTM.ReaderMG1.prototype.readUVMaps = function(stream, uvMaps){
 };
 
 CTM.ReaderMG1.prototype.readAttrMaps = function(stream, attrMaps){
-  for (var i = 0; i < attrMaps.length; ++ i){
+  var i = 0;
+  for (; i < attrMaps.length; ++ i){
     stream.readInt32(); //magic "ATTR"
 
     attrMaps[i].name = stream.readString();
@@ -298,13 +302,14 @@ CTM.ReaderMG2.prototype.readNormals = function(stream, body){
   var interleaved = new CTM.InterleavedStream(body.normals, 3);
   LZMA.decompress(stream, stream, interleaved, interleaved.data.length);
 
-  var smoothNormals = CTM.calcSmoothNormals(body.indices, body.vertices);
+  var smooth = CTM.calcSmoothNormals(body.indices, body.vertices);
 
-  CTM.restoreNormals(body.normals, smoothNormals, this.MG2Header.normalPrecision);
+  CTM.restoreNormals(body.normals, smooth, this.MG2Header.normalPrecision);
 };
 
 CTM.ReaderMG2.prototype.readUVMaps = function(stream, uvMaps){
-  for (var i = 0; i < uvMaps.length; ++ i){
+  var i = 0;
+  for (; i < uvMaps.length; ++ i){
     stream.readInt32(); //magic "TEXC"
 
     uvMaps[i].name = stream.readString();
@@ -322,7 +327,8 @@ CTM.ReaderMG2.prototype.readUVMaps = function(stream, uvMaps){
 };
 
 CTM.ReaderMG2.prototype.readAttrMaps = function(stream, attrMaps){
-  for (var i = 0; i < attrMaps.length; ++ i){
+  var i = 0;
+  for (; i < attrMaps.length; ++ i){
     stream.readInt32(); //magic "ATTR"
 
     attrMaps[i].name = stream.readString();
@@ -339,10 +345,11 @@ CTM.ReaderMG2.prototype.readAttrMaps = function(stream, attrMaps){
 };
 
 CTM.restoreIndices = function(indices, len){
+  var i = 3;
   if (len > 0){
     indices[2] += indices[0];
   }
-  for (var i = 3; i < len; i += 3){
+  for (; i < len; i += 3){
     indices[i] += indices[i - 3];
     
     if (indices[i] === indices[i - 3]){
@@ -356,79 +363,103 @@ CTM.restoreIndices = function(indices, len){
 };
 
 CTM.restoreGridIndices = function(gridIndices, len){
-  for (var i = 1; i < len; ++ i){
+  var i = 1;
+  for (; i < len; ++ i){
     gridIndices[i] += gridIndices[i - 1];
   }
 };
 
 CTM.restoreVertices = function(vertices, grid, gridIndices, precision){
-  var verticesIndices = new Uint32Array(vertices.buffer, vertices.byteOffset),
-      gridOrigin = [], gridIdx, delta, prevGridIndex = 0x7fffffff, prevDelta = 0;
+  var gridIdx, delta, x, y, z,
+      intVertices = new Uint32Array(vertices.buffer, vertices.byteOffset),
+      ydiv = grid.divx, zdiv = ydiv * grid.divy,
+      prevGridIdx = 0x7fffffff, prevDelta = 0,
+      i = 0, j = 0, len = gridIndices.length;
 
-  for (var i = 0, j = 0; i < gridIndices.length; ++ i, j += 3){
-    gridIdx = gridIndices[i];
+  for (; i < len; j += 3){
+    x = gridIdx = gridIndices[i ++];
     
-    CTM.gridIdxToPoint(grid, gridIdx, gridOrigin);
+    z = ~~(x / zdiv);
+    x -= ~~(z * zdiv);
+    y = ~~(x / ydiv);
+    x -= ~~(y * ydiv);
 
-    delta = verticesIndices[j];
-    if (gridIdx === prevGridIndex){
+    delta = intVertices[j];
+    if (gridIdx === prevGridIdx){
       delta += prevDelta;
     }
 
-    vertices[j]     = gridOrigin[0] + precision * delta;
-    vertices[j + 1] = gridOrigin[1] + precision * verticesIndices[j + 1];
-    vertices[j + 2] = gridOrigin[2] + precision * verticesIndices[j + 2];
+    vertices[j]     = grid.lowerBoundx +
+      x * grid.sizex + precision * delta;
+    vertices[j + 1] = grid.lowerBoundy +
+      y * grid.sizey + precision * intVertices[j + 1];
+    vertices[j + 2] = grid.lowerBoundz +
+      z * grid.sizez + precision * intVertices[j + 2];
 
-    prevGridIndex = gridIdx;
+    prevGridIdx = gridIdx;
     prevDelta = delta;
   }
 };
 
-CTM.restoreNormals = function(normals, smoothNormals, precision){
-  var intNormals = new Uint32Array(normals.buffer, normals.byteOffset),
-    n = [], basis = [], magn, intPhi, phi, thetaScale, theta, sinPhi;
+CTM.restoreNormals = function(normals, smooth, precision){
+  var ro, phi, theta, sinPhi,
+      nx, ny, nz, by, bz, len,
+      intNormals = new Uint32Array(normals.buffer, normals.byteOffset),
+      i = 0, k = normals.length,
+      PI_DIV_2 = 3.141592653589793238462643 * 0.5;
 
-  for (var i = 0; i < normals.length; i += 3){
-    magn = intNormals[i] * precision;
-    
-    intPhi = intNormals[i + 1];
-    
-    if (intPhi === 0){
-      theta = - Math.PI;
+  for (; i < k; i += 3){
+    ro = intNormals[i] * precision;
+    phi = intNormals[i + 1];
+
+    if (phi === 0){
+      normals[i]     = smooth[i]     * ro;
+      normals[i + 1] = smooth[i + 1] * ro;
+      normals[i + 2] = smooth[i + 2] * ro;
     }else{
-      if (intPhi <= 4){
-        thetaScale = 0.5;
+      
+      if (phi <= 4){
+        theta = (intNormals[i + 2] - 2) * PI_DIV_2;
       }else{
-        thetaScale = 2.0 / intPhi;
+        theta = ( (intNormals[i + 2] * 4 / phi) - 2) * PI_DIV_2;
       }
-      theta = (intNormals[i + 2] * thetaScale - 1) * Math.PI;
+      
+      phi *= precision * PI_DIV_2;
+      sinPhi = ro * Math.sin(phi);
+
+      nx = sinPhi * Math.cos(theta);
+      ny = sinPhi * Math.sin(theta);
+      nz = ro * Math.cos(phi);
+
+      bz = smooth[i + 1];
+      by = smooth[i] - smooth[i + 2];
+
+      len = Math.sqrt(2 * bz * bz + by * by);
+      if (len > 1e-20){
+        by /= len;
+        bz /= len;
+      }
+
+      normals[i]     = smooth[i]     * nz +
+        (smooth[i + 1] * bz - smooth[i + 2] * by) * ny - bz * nx;
+      normals[i + 1] = smooth[i + 1] * nz -
+        (smooth[i + 2]      + smooth[i]   ) * bz  * ny + by * nx;
+      normals[i + 2] = smooth[i + 2] * nz +
+        (smooth[i]     * by + smooth[i + 1] * bz) * ny + bz * nx;
     }
-    
-    phi = intPhi * 0.5 * Math.PI * precision;
-    
-    sinPhi = Math.sin(phi);
-    
-    n[0] = sinPhi * Math.cos(theta) * magn;
-    n[1] = sinPhi * Math.sin(theta) * magn;
-    n[2] = Math.cos(phi) * magn;
-    
-    CTM.makeNormalCoordSys(smoothNormals, i, basis);
-    
-    normals[i]     = basis[0] * n[0] + basis[3] * n[1] + basis[6] * n[2];
-    normals[i + 1] = basis[1] * n[0] + basis[4] * n[1] + basis[7] * n[2];
-    normals[i + 2] = basis[2] * n[0] + basis[5] * n[1] + basis[8] * n[2];
   }
 };
 
 CTM.restoreMap = function(map, count, precision){
-  var mapIndices = new Uint32Array(map.buffer, map.byteOffset),
-    delta, value;
+  var delta, value,
+      intMap = new Uint32Array(map.buffer, map.byteOffset),
+      i = 0, j, len = map.length;
 
-  for (var i = 0; i < count; ++ i){
+  for (; i < count; ++ i){
     delta = 0;
 
-    for (var j = i; j < map.length; j += count){
-      value = mapIndices[j];
+    for (j = i; j < len; j += count){
+      value = intMap[j];
       
       delta += value & 1? -( (value + 1) >> 1): value >> 1;
       
@@ -437,96 +468,59 @@ CTM.restoreMap = function(map, count, precision){
   }
 };
 
-CTM.gridIdxToPoint = function(grid, gridIdx, gridOrigin){
-  var zdiv = grid.divx * grid.divy,
-      ydiv = grid.divx,
-      point = [];
-
-  point[2] = ~~(gridIdx / zdiv);
-  
-  gridIdx -= ~~(point[2] * zdiv);
-  point[1] = ~~(gridIdx / ydiv);
-  
-  gridIdx -= ~~(point[1] * ydiv);
-  point[0] = gridIdx;
-
-  gridOrigin[0] = grid.lowerBoundx + point[0] * grid.sizex;
-  gridOrigin[1] = grid.lowerBoundy + point[1] * grid.sizey;
-  gridOrigin[2] = grid.lowerBoundz + point[2] * grid.sizez;
-};
-
 CTM.calcSmoothNormals = function(indices, vertices){
-  var smoothNormals = new Float32Array(vertices.length),
-    tri = [], v1 = [], v2 = [], n = [], len, i, j;
+  var smooth = new Float32Array(vertices.length),
+      indx, indy, indz, nx, ny, nz,
+      v1x, v1y, v1z, v2x, v2y, v2z, len,
+      i, k;
 
-  for (i = 0; i < indices.length; i += 3){
-    tri[0] = indices[i]     * 3;
-    tri[1] = indices[i + 1] * 3;
-    tri[2] = indices[i + 2] * 3;
+  for (i = 0, k = indices.length; i < k;){
+    indx = indices[i ++] * 3;
+    indy = indices[i ++] * 3;
+    indz = indices[i ++] * 3;
 
-    for (j = 0; j < 3; ++ j){
-      v1[j] = vertices[ tri[1] + j] - vertices[ tri[0] + j];
-      v2[j] = vertices[ tri[2] + j] - vertices[ tri[0] + j];
-    }
+    v1x = vertices[indy]     - vertices[indx];
+    v2x = vertices[indz]     - vertices[indx];
+    v1y = vertices[indy + 1] - vertices[indx + 1];
+    v2y = vertices[indz + 1] - vertices[indx + 1];
+    v1z = vertices[indy + 2] - vertices[indx + 2];
+    v2z = vertices[indz + 2] - vertices[indx + 2];
     
-    n[0] = v1[1] * v2[2] - v1[2] * v2[1];
-    n[1] = v1[2] * v2[0] - v1[0] * v2[2];
-    n[2] = v1[0] * v2[1] - v1[1] * v2[0];
+    nx = v1y * v2z - v1z * v2y;
+    ny = v1z * v2x - v1x * v2z;
+    nz = v1x * v2y - v1y * v2x;
     
-    len = Math.sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]);
+    len = Math.sqrt(nx * nx + ny * ny + nz * nz);
     if (len > 1e-10){
-      len = 1.0 / len;
-      
-      n[0] *= len;
-      n[1] *= len;
-      n[2] *= len;
+      nx /= len;
+      ny /= len;
+      nz /= len;
     }
     
-    for (j = 0; j < 3; ++ j){
-      smoothNormals[ tri[j] ]    += n[0];
-      smoothNormals[ tri[j] + 1] += n[1];
-      smoothNormals[ tri[j] + 2] += n[2];
-    }
+    smooth[indx]     += nx;
+    smooth[indx + 1] += ny;
+    smooth[indx + 2] += nz;
+    smooth[indy]     += nx;
+    smooth[indy + 1] += ny;
+    smooth[indy + 2] += nz;
+    smooth[indz]     += nx;
+    smooth[indz + 1] += ny;
+    smooth[indz + 2] += nz;
   }
 
-  for (i = 0; i < smoothNormals.length; i += 3){
-    len = Math.sqrt(smoothNormals[i] * smoothNormals[i] + 
-      smoothNormals[i + 1] * smoothNormals[i + 1] +
-      smoothNormals[i + 2] * smoothNormals[i + 2]);
+  for (i = 0, k = smooth.length; i < k; i += 3){
+    len = Math.sqrt(smooth[i] * smooth[i] + 
+      smooth[i + 1] * smooth[i + 1] +
+      smooth[i + 2] * smooth[i + 2]);
 
     if(len > 1e-10){
-      len = 1.0 / len;
-
-      smoothNormals[i]     *= len;
-      smoothNormals[i + 1] *= len;
-      smoothNormals[i + 2] *= len;
+      smooth[i]     /= len;
+      smooth[i + 1] /= len;
+      smooth[i + 2] /= len;
     }
   }
 
-  return smoothNormals;
-};
-
-CTM.makeNormalCoordSys = function(normals, index, basis){
-  basis[0] = - normals[index + 1];
-  basis[1] = normals[index] - normals[index + 2];
-  basis[2] = normals[index + 1];
-
-  var len = Math.sqrt(2.0 * basis[0] * basis[0] + basis[1] * basis[1]);
-  if (len > 1e-10){
-    len = 1.0 / len;
-    
-    basis[0] *= len;
-    basis[1] *= len;
-    basis[2] *= len;
-  }
-
-  basis[6] = normals[index];
-  basis[7] = normals[index + 1];
-  basis[8] = normals[index + 2];
-
-  basis[3] = basis[7] * basis[2] - basis[8] * basis[1];
-  basis[4] = basis[8] * basis[0] - basis[6] * basis[2];
-  basis[5] = basis[6] * basis[1] - basis[7] * basis[0];
+  return smooth;
 };
 
 CTM.isLittleEndian = (function(){
@@ -543,15 +537,16 @@ CTM.InterleavedStream = function(data, count){
   this.data = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
   this.offset = CTM.isLittleEndian? 3: 0;
   this.count = count * 4;
+  this.len = this.data.length;
 };
 
 CTM.InterleavedStream.prototype.writeByte = function(value){
   this.data[this.offset] = value;
   
   this.offset += this.count;
-  if (this.offset >= this.data.length){
+  if (this.offset >= this.len){
   
-    this.offset -= this.data.length - 4;
+    this.offset -= this.len - 4;
     if (this.offset >= this.count){
     
       this.offset -= this.count + (CTM.isLittleEndian? 1: -1);
@@ -564,13 +559,9 @@ CTM.Stream = function(data){
   this.offset = 0;
 };
 
-CTM.Stream.prototype.TWO_POW_MINUS23 = (function(){
-  return Math.pow(2, -23);
-}());
+CTM.Stream.prototype.TWO_POW_MINUS23 = Math.pow(2, -23);
 
-CTM.Stream.prototype.TWO_POW_MINUS126 = (function(){
-  return Math.pow(2, -126);
-}());
+CTM.Stream.prototype.TWO_POW_MINUS126 = Math.pow(2, -126);
 
 CTM.Stream.prototype.readByte = function(){
   return this.data.charCodeAt(this.offset ++) & 0xff;
@@ -615,20 +606,20 @@ CTM.Stream.prototype.readString = function(){
 };
 
 CTM.Stream.prototype.readArrayInt32 = function(array){
-  var len = array.length;
-
-  for (var i = 0; i < len; ++ i){
-    array[i] = this.readInt32();
+  var i = 0, len = array.length;
+  
+  while(i < len){
+    array[i ++] = this.readInt32();
   }
 
   return array;
 };
 
 CTM.Stream.prototype.readArrayFloat32 = function(array){
-  var len = array.length;
+  var i = 0, len = array.length;
 
-  for (var i = 0; i < len; ++ i){
-    array[i] = this.readFloat32();
+  while(i < len){
+    array[i ++] = this.readFloat32();
   }
 
   return array;
