@@ -348,6 +348,7 @@ CTM.restoreIndices = function(indices, len){
   var i = 3;
   if (len > 0){
     indices[2] += indices[0];
+    indices[1] += indices[0];
   }
   for (; i < len; i += 3){
     indices[i] += indices[i - 3];
