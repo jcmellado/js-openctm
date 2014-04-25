@@ -1,3 +1,30 @@
+/*
+Copyright (c) 2011 Juan Mellado
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+*/
+
+/*
+References:
+- "OpenCTM: The Open Compressed Triangle Mesh file format" by Marcus Geelnard
+  http://openctm.sourceforge.net/
+*/
 
 var CTM = CTM || {};
 
@@ -186,28 +213,28 @@ CTM.ReaderMG1.prototype.read = function(stream, body){
 
 CTM.ReaderMG1.prototype.readIndices = function(stream, indices){
   stream.readInt32(); //magic "INDX"
-  stream.readInt32(); //packed size
+  var size = stream.readInt32(); //packed size
   
   var interleaved = new CTM.InterleavedStream(indices, 3);
-  LZMA.decompress(stream, stream, interleaved, interleaved.data.length);
+  CTM.decompress(stream, size, interleaved);
 
   CTM.restoreIndices(indices, indices.length);
 };
 
 CTM.ReaderMG1.prototype.readVertices = function(stream, vertices){
   stream.readInt32(); //magic "VERT"
-  stream.readInt32(); //packed size
+  var size = stream.readInt32(); //packed size
   
   var interleaved = new CTM.InterleavedStream(vertices, 1);
-  LZMA.decompress(stream, stream, interleaved, interleaved.data.length);
+  CTM.decompress(stream, size, interleaved);
 };
 
 CTM.ReaderMG1.prototype.readNormals = function(stream, normals){
   stream.readInt32(); //magic "NORM"
-  stream.readInt32(); //packed size
+  var size = stream.readInt32(); //packed size
 
   var interleaved = new CTM.InterleavedStream(normals, 3);
-  LZMA.decompress(stream, stream, interleaved, interleaved.data.length);
+  CTM.decompress(stream, size, interleaved);
 };
 
 CTM.ReaderMG1.prototype.readUVMaps = function(stream, uvMaps){
@@ -218,10 +245,10 @@ CTM.ReaderMG1.prototype.readUVMaps = function(stream, uvMaps){
     uvMaps[i].name = stream.readString();
     uvMaps[i].filename = stream.readString();
     
-    stream.readInt32(); //packed size
+    var size = stream.readInt32(); //packed size
 
     var interleaved = new CTM.InterleavedStream(uvMaps[i].uv, 2);
-    LZMA.decompress(stream, stream, interleaved, interleaved.data.length);
+    CTM.decompress(stream, size, interleaved);
   }
 };
 
@@ -232,10 +259,10 @@ CTM.ReaderMG1.prototype.readAttrMaps = function(stream, attrMaps){
 
     attrMaps[i].name = stream.readString();
     
-    stream.readInt32(); //packed size
+    var size = stream.readInt32(); //packed size
 
     var interleaved = new CTM.InterleavedStream(attrMaps[i].attr, 4);
-    LZMA.decompress(stream, stream, interleaved, interleaved.data.length);
+    CTM.decompress(stream, size, interleaved);
   }
 };
 
@@ -261,10 +288,10 @@ CTM.ReaderMG2.prototype.read = function(stream, body){
 
 CTM.ReaderMG2.prototype.readVertices = function(stream, vertices){
   stream.readInt32(); //magic "VERT"
-  stream.readInt32(); //packed size
+  var size = stream.readInt32(); //packed size
 
   var interleaved = new CTM.InterleavedStream(vertices, 3);
-  LZMA.decompress(stream, stream, interleaved, interleaved.data.length);
+  CTM.decompress(stream, size, interleaved);
   
   var gridIndices = this.readGridIndices(stream, vertices);
   
@@ -273,12 +300,12 @@ CTM.ReaderMG2.prototype.readVertices = function(stream, vertices){
 
 CTM.ReaderMG2.prototype.readGridIndices = function(stream, vertices){
   stream.readInt32(); //magic "GIDX"
-  stream.readInt32(); //packed size
+  var size = stream.readInt32(); //packed size
   
   var gridIndices = new Uint32Array(vertices.length / 3);
   
   var interleaved = new CTM.InterleavedStream(gridIndices, 1);
-  LZMA.decompress(stream, stream, interleaved, interleaved.data.length);
+  CTM.decompress(stream, size, interleaved);
   
   CTM.restoreGridIndices(gridIndices, gridIndices.length);
   
@@ -287,20 +314,20 @@ CTM.ReaderMG2.prototype.readGridIndices = function(stream, vertices){
 
 CTM.ReaderMG2.prototype.readIndices = function(stream, indices){
   stream.readInt32(); //magic "INDX"
-  stream.readInt32(); //packed size
+  var size = stream.readInt32(); //packed size
 
   var interleaved = new CTM.InterleavedStream(indices, 3);
-  LZMA.decompress(stream, stream, interleaved, interleaved.data.length);
+  CTM.decompress(stream, size, interleaved);
 
   CTM.restoreIndices(indices, indices.length);
 };
 
 CTM.ReaderMG2.prototype.readNormals = function(stream, body){
   stream.readInt32(); //magic "NORM"
-  stream.readInt32(); //packed size
+  var size = stream.readInt32(); //packed size
 
   var interleaved = new CTM.InterleavedStream(body.normals, 3);
-  LZMA.decompress(stream, stream, interleaved, interleaved.data.length);
+  CTM.decompress(stream, size, interleaved);
 
   var smooth = CTM.calcSmoothNormals(body.indices, body.vertices);
 
@@ -317,10 +344,10 @@ CTM.ReaderMG2.prototype.readUVMaps = function(stream, uvMaps){
     
     var precision = stream.readFloat32();
     
-    stream.readInt32(); //packed size
+    var size = stream.readInt32(); //packed size
 
     var interleaved = new CTM.InterleavedStream(uvMaps[i].uv, 2);
-    LZMA.decompress(stream, stream, interleaved, interleaved.data.length);
+    CTM.decompress(stream, size, interleaved);
     
     CTM.restoreMap(uvMaps[i].uv, 2, precision);
   }
@@ -335,13 +362,19 @@ CTM.ReaderMG2.prototype.readAttrMaps = function(stream, attrMaps){
     
     var precision = stream.readFloat32();
     
-    stream.readInt32(); //packed size
+    var size = stream.readInt32(); //packed size
 
     var interleaved = new CTM.InterleavedStream(attrMaps[i].attr, 4);
-    LZMA.decompress(stream, stream, interleaved, interleaved.data.length);
+    CTM.decompress(stream, size, interleaved);
     
     CTM.restoreMap(attrMaps[i].attr, 4, precision);
   }
+};
+
+CTM.decompress = function(stream, size, interleaved){
+  var offset = stream.offset;
+  LZMA.decompress(stream, stream, interleaved, interleaved.data.length);
+  stream.offset = offset + 5 + size;
 };
 
 CTM.restoreIndices = function(indices, len){
