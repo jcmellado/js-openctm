@@ -6,13 +6,13 @@ Some parts of this library are a direct traslation to JavaScript from original C
 
 ### Demo ###
 
-- [Live demo!](http://www.inmensia.com/files/ctm/demo/demo.html)
+- [Live demo!](https://jcmellado.github.io/showcase/js/js-openctm/demo/index.html)
 
 - [Using Three.js to render](http://alteredqualia.com/three/examples/webgl_loader_ctm_materials.html)
 
 ### Video ###
 
-[![js-handtracking](http://img.youtube.com/vi/mCjs9oWlccg/0.jpg)](http://www.youtube.com/watch?v=mCjs9oWlccg)
+[js-openctm](https://jcmellado.github.io/showcase/videos/js-openctm_%20WebGL%20demo.mp4)
 
 ### How to use it? ###
 
@@ -102,7 +102,7 @@ if (file.body.uvMaps){
 No idea? Try [http://learningwebgl.com](http://learningwebgl.com/blog/?page_id=1217).
 
 ### Dependencies ###
-[js-lzma](http://js-lzma.googlecode.com): A port of the LZMA decompression algorithm to JavaScript.
+[js-lzma](https://github.com/jcmellado/js-lzma): A port of the LZMA decompression algorithm to JavaScript.
 
 ### Limitations ###
 
